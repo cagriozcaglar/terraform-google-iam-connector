@@ -1,0 +1,129 @@
+apiVersion: blueprints.cloud.google.com/v1alpha1
+kind: TerraformBlueprint
+metadata:
+  name: terraform-google-iam-workforce-pool
+  source:
+    type: git
+    git:
+      repo: https://github.com/GoogleCloudPlatform/terraform-google-iam-workforce-pool.git
+      dir: /
+  version: 1.0.0
+  actuationTool:
+    type: Terraform
+    version: '>= 1.3'
+  title: IAM Workforce Identity Pool and Provider
+  descriptions:
+    tagline: Create a Google Cloud IAM Workforce Identity Pool and a corresponding provider (OIDC or SAML).
+    detailed: This module creates a Google Cloud IAM Workforce Identity Pool and a corresponding provider. A Workforce Identity Pool allows you to manage access for a workforce (e.g., employees, partners) to Google Cloud services. It enables federation with an external identity provider (IdP) like Azure AD or Okta, allowing users to authenticate using their existing corporate credentials.
+  labels:
+    iam: ''
+    identity: ''
+    workforce: ''
+    federation: ''
+spec:
+  terraform:
+    variables:
+    - name: organization_id
+      description: The organization ID where the workforce pool will be created. The parent format is `organizations/{organization_id}`.
+      type: string
+      required: true
+    - name: workforce_pool_id
+      description: The ID of the workforce pool to create. It must be a globally unique identifier.
+      type: string
+      required: true
+    - name: workforce_pool_display_name
+      description: A user-specified display name for the workforce pool. Cannot be longer than 32 characters.
+      type: string
+      required: false
+      default: null
+    - name: workforce_pool_description
+      description: A user-specified description of the workforce pool. Cannot be longer than 256 characters.
+      type: string
+      required: false
+      default: null
+    - name: workforce_pool_session_duration
+      description: Duration that the Google Cloud access tokens, console sign-in sessions, and gcloud sign-in sessions from this pool are valid. Must be between 15 minutes (900s) and 12 hours (43200s). Default is 1 hour.
+      type: string
+      required: false
+      default: 3600s
+    - name: workforce_pool_disabled
+      description: Whether the workforce pool is disabled. If true, the pool is disabled. If false, the pool is enabled.
+      type: bool
+      required: false
+      default: false
+    - name: provider_id
+      description: The ID of the workforce pool provider to create. It must be a globally unique identifier.
+      type: string
+      required: true
+    - name: provider_display_name
+      description: A user-specified display name for the provider. Cannot be longer than 32 characters.
+      type: string
+      required: false
+      default: null
+    - name: provider_description
+      description: A user-specified description of the provider. Cannot be longer than 256 characters.
+      type: string
+      required: false
+      default: null
+    - name: provider_disabled
+      description: Whether the provider is disabled. You cannot use a disabled provider to exchange tokens.
+      type: bool
+      required: false
+      default: false
+    - name: attribute_mapping
+      description: A map of attribute mapping from the identity provider to Google Cloud. The key is the full attribute name in Google Cloud (e.g., `google.subject`), and the value is a Common Expression Language (CEL) expression for the source attribute (e.g., `assertion.sub`).
+      type: map(string)
+      required: false
+      default:
+        google.subject: assertion.sub
+    - name: oidc_provider_config
+      description: Configuration for an OIDC provider. You must set either `oidc_provider_config` or `saml_provider_config`.
+      type: object({ issuer_uri = string, client_id  = string, jwks_json = optional(string) })
+      required: false
+      default:
+        issuer_uri: https://accounts.google.com
+        client_id: example-client-id
+    - name: saml_provider_config
+      description: Configuration for a SAML provider. You must set either `oidc_provider_config` or `saml_provider_config`.
+      type: object({ idp_metadata_xml = string })
+      required: false
+      default: null
+    variableGroups:
+    - name: Workforce Pool Configuration
+      description: Settings for the main workforce pool resource.
+      variables:
+      - organization_id
+      - workforce_pool_id
+      - workforce_pool_display_name
+      - workforce_pool_description
+      - workforce_pool_session_duration
+      - workforce_pool_disabled
+    - name: Workforce Pool Provider Configuration
+      description: Settings for the identity provider within the workforce pool.
+      variables:
+      - provider_id
+      - provider_display_name
+      - provider_description
+      - provider_disabled
+      - attribute_mapping
+    - name: Provider Protocol Configuration
+      description: Select and configure either an OIDC or SAML provider. Only one can be used.
+      variables:
+      - oidc_provider_config
+      - saml_provider_config
+    outputs:
+    - name: workforce_pool_name
+      description: The full resource name of the created workforce pool.
+    - name: workforce_pool_id
+      description: The ID of the created workforce pool.
+    - name: workforce_pool_provider_name
+      description: The full resource name of the created workforce pool provider.
+    - name: workforce_pool_provider_id
+      description: The ID of the created workforce pool provider.
+  requirements:
+    roles:
+    - level: Organization
+      roles:
+      - roles/iam.workforcePoolAdmin
+    services:
+    - iam.googleapis.com
