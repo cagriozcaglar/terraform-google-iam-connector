@@ -1,0 +1,106 @@
+apiVersion: blueprints.cloud.google.com/v1alpha1
+kind: TerraformBlueprint
+metadata:
+  name: terraform-google-iam
+  source:
+    type: git
+    git:
+      repo: https://github.com/GoogleCloudPlatform/terraform-google-iam.git
+      dir: /
+  version: 1.0.0
+spec:
+  info:
+    title: Google Cloud IAM Module
+    actuationTool:
+      type: Terraform
+      version: ">= 1.3.0"
+    description:
+      tagline: A comprehensive module for managing Google Cloud IAM policies.
+      detailed: This module manages Identity and Access Management (IAM) policies on Google Cloud projects, folders, and organizations. It supports both authoritative bindings, which replace all existing members for a role, and additive members, which grant a role to a single member, often with a condition.
+      preDeploy: To deploy this blueprint, you must have an active billing account and appropriate permissions to set IAM policies on the target resource (project, folder, or organization).
+    icon: assets/icon.png
+    diagrams:
+    - name: architecture
+      alt: Architecture diagram
+      src: assets/architecture.png
+    documentations:
+    - title: README
+      url: README.md
+    examples:
+    - name: project_iam_example
+      location: examples/project_iam
+      title: Project IAM Example
+      description: Demonstrates applying authoritative and additive IAM bindings to a GCP project.
+    - name: folder_iam_example
+      location: examples/folder_iam
+      title: Folder IAM Example
+      description: Demonstrates applying IAM bindings to a GCP folder.
+    - name: organization_iam_example
+      location: examples/organization_iam
+      title: Organization IAM Example
+      description: Demonstrates applying IAM bindings to a GCP organization.
+    labels:
+      gcp: ""
+      iam: ""
+      security: ""
+  requirements:
+    roles:
+    - level: Project
+      roles:
+      - roles/resourcemanager.projectIamAdmin
+    - level: Folder
+      roles:
+      - roles/resourcemanager.folderIamAdmin
+    - level: Organization
+      roles:
+      - roles/resourcemanager.organizationIamAdmin
+    permissions:
+    - resourcemanager.projects.setIamPolicy
+    - resourcemanager.folders.setIamPolicy
+    - resourcemanager.organizations.setIamPolicy
+    services:
+    - cloudresourcemanager.googleapis.com
+  terraform:
+    variables:
+    - name: project_id
+      description: "The ID of the project to which IAM policies will be applied. Mutually exclusive with `folder_id` and `organization_id`."
+      type: string
+      default: null
+      required: false
+    - name: folder_id
+      description: "The ID of the folder to which IAM policies will be applied (e.g., 'folders/12345678'). Mutually exclusive with `project_id` and `organization_id`."
+      type: string
+      default: null
+      required: false
+    - name: organization_id
+      description: "The ID of the organization to which IAM policies will be applied (e.g., 'organizations/12345678'). Mutually exclusive with `project_id` and `folder_id`."
+      type: string
+      default: null
+      required: false
+    - name: bindings
+      description: "A map of authoritative IAM bindings. The key is the role and the value is a list of members. Any existing members of these roles will be removed. Example: {'roles/viewer' = ['user:jane@example.com']}"
+      type: map(list(string))
+      default: {}
+      required: false
+    - name: conditional_bindings
+      description: "A list of additive IAM bindings, each with an optional condition. Each binding grants a role to a single member without affecting other members of the role."
+      type: list(object({ role = string, member = string, condition = optional(object({ title = string, description = string, expression = string })) }))
+      default: []
+      required: false
+    variableGroups:
+    - name: Resource Target
+      description: "Specify the target resource for the IAM policies. Exactly one must be provided."
+      variables:
+      - project_id
+      - folder_id
+      - organization_id
+    - name: IAM Policies
+      description: "Define the IAM policies to be applied."
+      variables:
+      - bindings
+      - conditional_bindings
+    outputs:
+    - name: authoritative_bindings_etags
+      description: "A map of etags for the authoritative IAM bindings created, keyed by role."
+    - name: additive_members_ids
+      description: "A map of resource IDs for the additive IAM members created, keyed by 'role/member'."
