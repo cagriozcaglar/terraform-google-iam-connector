@@ -1,0 +1,77 @@
+apiVersion: blueprints.cloud.google.com/v1alpha1
+kind: TerraformBlueprint
+metadata:
+  name: terraform-google-iam-bindings
+  source:
+    type: git
+    location: https://github.com/GoogleCloudPlatform/terraform-google-iam-bindings.git
+  version: 1.0.0
+  actuationTool:
+    type: Terraform
+    versions:
+      - ">= 1.3.0"
+  title: Flexible IAM Bindings
+  descriptions:
+    tagline: Manage granular IAM bindings for Google Cloud resources.
+    detailed: |
+      This module is used to create Identity and Access Management (IAM) bindings on
+      various Google Cloud resources. It provides a flexible interface to connect a
+      principal (user, group, or service account) to a specific role on a project,
+      storage bucket, or BigQuery dataset. By using `google_*_iam_member`, this module
+      ensures that bindings are managed additively without overwriting existing policies.
+      This approach is ideal for managing permissions granularly and adhering to the
+      principle of least privilege.
+
+      The module supports creating multiple bindings for each resource type in a single
+      invocation by accepting maps of binding configurations. This allows for efficient
+      and declarative management of IAM policies across different resource types.
+  examples:
+    - name: simple_iam_bindings
+      location: examples/simple_iam_bindings
+  labels:
+    gcp: ""
+    iam: ""
+  documentations:
+    - title: Module README
+      url: README.md
+spec:
+  terraformVariables:
+    - name: project_bindings
+      description: "A map of IAM bindings to create on projects. The key of each map item is a descriptive name for the binding, and the value is an object containing the project, role, and member."
+      type: map(object({ project = string, role = string, member = string }))
+      required: false
+      default: {}
+    - name: storage_bucket_bindings
+      description: "A map of IAM bindings to create on storage buckets. The key of each map item is a descriptive name for the binding, and the value is an object containing the bucket, role, and member."
+      type: map(object({ bucket = string, role = string, member = string }))
+      required: false
+      default: {}
+    - name: bigquery_dataset_bindings
+      description: "A map of IAM bindings to create on BigQuery datasets. The key of each map item is a descriptive name for the binding, and the value is an object containing the dataset details, role, and member."
+      type: map(object({ project = string, dataset_id = string, role = string, member = string }))
+      required: false
+      default: {}
+  terraformOutputs:
+    - name: project_bindings
+      description: "A map of the created google_project_iam_member resources, keyed by the name provided in the input 'project_bindings' map."
+    - name: storage_bucket_bindings
+      description: "A map of the created google_storage_bucket_iam_member resources, keyed by the name provided in the input 'storage_bucket_bindings' map."
+    - name: bigquery_dataset_bindings
+      description: "A map of the created google_bigquery_dataset_iam_member resources, keyed by the name provided in the input 'bigquery_dataset_bindings' map."
+    - name: all_binding_ids
+      description: "A map of all created IAM binding IDs, keyed by the descriptive name from the input maps, prefixed by resource type to avoid collisions."
+  requirements:
+    services:
+      - cloudresourcemanager.googleapis.com
+      - storage.googleapis.com
+      - bigquery.googleapis.com
+    roles:
+      - granularity: project
+        roles:
+          - roles/resourcemanager.projectIamAdmin
+          - roles/storage.admin
+          - roles/bigquery.admin
+    permissions:
+      - resourcemanager.projects.setIamPolicy
+      - storage.buckets.setIamPolicy
+      - bigquery.datasets.setIamPolicy
