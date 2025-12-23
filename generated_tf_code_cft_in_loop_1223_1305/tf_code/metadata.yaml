@@ -1,0 +1,128 @@
+# Copyright 2024 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+apiVersion: blueprints.cloud.google.com/v1alpha1
+kind: TerraformBlueprint
+metadata:
+  name: terraform-google-iam-member
+  source:
+    type: git
+    location: https://github.com/GoogleCloudPlatform/terraform-google-iam-member.git # Placeholder URL
+spec:
+  info:
+    title: IAM Member
+    version: 1.0.0 # Placeholder version
+    actuationTool:
+      type: Terraform
+      flavor: HCL
+      version: ">= 1.5.0"
+    descriptions:
+      tagline: Manages individual IAM member bindings on various GCP resources.
+      detailed: This module handles the creation of IAM member bindings (`google_*_iam_member`) on a specified GCP resource. It supports projects, folders, organizations, GCS buckets, and service accounts. The module ensures that only one target resource is specified at a time.
+    icon: https://cloud.google.com/images/products/icons/iam.svg
+    documentations:
+      - title: README
+        url: ./README.md # Placeholder URL
+
+  ui:
+    input:
+      variables:
+        - name: bindings
+          description: "A map of IAM bindings to apply to the resource. The key is a logical name for the binding, and the value is an object containing a `role`, a list of `members`, and an optional `condition` block. The `condition` object takes a `title`, `description`, and `expression`."
+          type: map(object({ role = string, members = list(string), condition = optional(object({ title = string, description = optional(string), expression = string })) }))
+          required: false
+          default: {}
+        - name: bucket
+          description: "The GCS bucket name to apply IAM bindings to. Mutually exclusive with `project`, `folder`, `organization`, and `service_account`."
+          type: string
+          required: false
+          default: null
+        - name: folder
+          description: "The folder ID (e.g., 'folders/12345') to apply IAM bindings to. Mutually exclusive with 'project', 'organization', 'bucket', and 'service_account'."
+          type: string
+          required: false
+          default: null
+        - name: organization
+          description: "The organization ID (e.g., '12345') to apply IAM bindings to. Mutually exclusive with 'project', 'folder', 'bucket', and 'service_account'."
+          type: string
+          required: false
+          default: null
+        - name: project
+          description: "The project ID to apply IAM bindings to. Mutually exclusive with 'folder', 'organization', 'bucket', and 'service_account'."
+          type: string
+          required: false
+          default: null
+        - name: service_account
+          description: "The full identifier of the service account ('projects/{project}/serviceAccounts/{email}') to apply IAM bindings to. Mutually exclusive with 'project', 'folder', 'organization', and 'bucket'."
+          type: string
+          required: false
+          default: null
+      variableGroups:
+        - name: Target Resource
+          description: Specify exactly one resource to apply IAM bindings to.
+          variables:
+            - project
+            - folder
+            - organization
+            - bucket
+            - service_account
+        - name: IAM Bindings
+          description: Define the roles and members for the IAM bindings.
+          variables:
+            - bindings
+
+  outputs:
+    - name: bucket_iam_bindings
+      description: "Map of GCS bucket-level IAM bindings created, keyed by a JSON-encoded string of the binding key, role, and member."
+    - name: folder_iam_bindings
+      description: "Map of folder-level IAM bindings created, keyed by a JSON-encoded string of the binding key, role, and member."
+    - name: organization_iam_bindings
+      description: "Map of organization-level IAM bindings created, keyed by a JSON-encoded string of the binding key, role, and member."
+    - name: project_iam_bindings
+      description: "Map of project-level IAM bindings created, keyed by a JSON-encoded string of the binding key, role, and member."
+    - name: service_account_iam_bindings
+      description: "Map of service account-level IAM bindings created, keyed by a JSON-encoded string of the binding key, role, and member."
+
+  requirements:
+    services:
+      - cloudresourcemanager.googleapis.com
+      - storage.googleapis.com
+      - iam.googleapis.com
+    roles:
+      - title: Project IAM Admin
+        granularity: Project
+        roles:
+          - roles/resourcemanager.projectIamAdmin
+      - title: Folder IAM Admin
+        granularity: Folder
+        roles:
+          - roles/resourcemanager.folderIamAdmin
+      - title: Organization Admin
+        granularity: Organization
+        roles:
+          - roles/resourcemanager.organizationAdmin
+      - title: Storage Admin
+        granularity: Project
+        roles:
+          - roles/storage.admin
+      - title: Service Account Admin
+        granularity: Project
+        roles:
+          - roles/iam.serviceAccountAdmin
+    permissions:
+      - resourcemanager.projects.setIamPolicy
+      - resourcemanager.folders.setIamPolicy
+      - resourcemanager.organizations.setIamPolicy
+      - storage.buckets.setIamPolicy
+      - iam.serviceAccounts.setIamPolicy
