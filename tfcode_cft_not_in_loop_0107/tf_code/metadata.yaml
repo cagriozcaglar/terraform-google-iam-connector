@@ -1,0 +1,183 @@
+#
+# Copyright 2024 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+apiVersion: blueprints.cloud.google.com/v1alpha1
+kind: TerraformBlueprint
+metadata:
+  name: terraform-google-iam-bindings
+  source:
+    type: git
+    location: https://github.com/GoogleCloudPlatform/terraform-google-iam-bindings.git
+spec:
+  info:
+    title: Flexible IAM Bindings
+    version: 1.0.0
+    actuationTool:
+      type: Terraform
+      versions: [ ">= 1.3" ]
+    description:
+      tagline: A flexible way to create and manage IAM connections for various GCP resources.
+      detailed: |
+        This module provides a flexible way to create and manage IAM connections (bindings and members)
+        for various Google Cloud Platform resources. It supports both additive (`iam_member`) and
+        authoritative (`iam_binding`) policies for Projects, Storage Buckets, and Service Accounts.
+    examples:
+      - name: simple_project
+        location: examples/simple_project
+        title: Simple Project IAM Example
+    labels:
+      - gcp
+      - iam
+      - security
+  customization:
+    variables:
+      - name: project_iam_members
+        description: List of additive IAM bindings for projects. Each object in the list requires `project`, `role`, and `member`. A `condition` block is optional.
+        type: |
+          list(object({
+            project = string
+            role    = string
+            member  = string
+            condition = optional(object({
+              title       = string
+              description = optional(string)
+              expression  = string
+            }))
+          }))
+        required: false
+        default: []
+      - name: project_iam_bindings
+        description: List of authoritative IAM bindings for projects. Each object in the list requires `project`, `role`, and `members`. A `condition` block is optional.
+        type: |
+          list(object({
+            project = string
+            role    = string
+            members = list(string)
+            condition = optional(object({
+              title       = string
+              description = optional(string)
+              expression  = string
+            }))
+          }))
+        required: false
+        default: []
+      - name: storage_bucket_iam_members
+        description: List of additive IAM bindings for GCS buckets. Each object in the list requires `bucket`, `role`, and `member`. A `condition` block is optional.
+        type: |
+          list(object({
+            bucket = string
+            role   = string
+            member = string
+            condition = optional(object({
+              title       = string
+              description = optional(string)
+              expression  = string
+            }))
+          }))
+        required: false
+        default: []
+      - name: storage_bucket_iam_bindings
+        description: List of authoritative IAM bindings for GCS buckets. Each object in the list requires `bucket`, `role`, and `members`. A `condition` block is optional.
+        type: |
+          list(object({
+            bucket  = string
+            role    = string
+            members = list(string)
+            condition = optional(object({
+              title       = string
+              description = optional(string)
+              expression  = string
+            }))
+          }))
+        required: false
+        default: []
+      - name: service_account_iam_members
+        description: List of additive IAM bindings for service accounts. Each object in the list requires `service_account_id`, `role`, and `member`. A `condition` block is optional. `service_account_id` is the full name, e.g., projects/PROJECT_ID/serviceAccounts/EMAIL.
+        type: |
+          list(object({
+            service_account_id = string
+            role               = string
+            member             = string
+            condition = optional(object({
+              title       = string
+              description = optional(string)
+              expression  = string
+            }))
+          }))
+        required: false
+        default: []
+      - name: service_account_iam_bindings
+        description: List of authoritative IAM bindings for service accounts. Each object in the list requires `service_account_id`, `role`, and `members`. A `condition` block is optional. `service_account_id` is the full name, e.g., projects/PROJECT_ID/serviceAccounts/EMAIL.
+        type: |
+          list(object({
+            service_account_id = string
+            role               = string
+            members            = list(string)
+            condition = optional(object({
+              title       = string
+              description = optional(string)
+              expression  = string
+            }))
+          }))
+        required: false
+        default: []
+    variableGroups:
+      - name: Project IAM
+        description: Configure IAM policies for GCP Projects.
+        variables:
+          - project_iam_members
+          - project_iam_bindings
+      - name: Storage Bucket IAM
+        description: Configure IAM policies for Google Cloud Storage Buckets.
+        variables:
+          - storage_bucket_iam_members
+          - storage_bucket_iam_bindings
+      - name: Service Account IAM
+        description: Configure IAM policies for GCP Service Accounts.
+        variables:
+          - service_account_iam_members
+          - service_account_iam_bindings
+    outputs:
+      - name: project_iam_members
+        description: A map of the created `google_project_iam_member` resources, keyed by the index of the input variable `project_iam_members`.
+      - name: project_iam_bindings
+        description: A map of the created `google_project_iam_binding` resources, keyed by the index of the input variable `project_iam_bindings`.
+      - name: storage_bucket_iam_members
+        description: A map of the created `google_storage_bucket_iam_member` resources, keyed by the index of the input variable `storage_bucket_iam_members`.
+      - name: storage_bucket_iam_bindings
+        description: A map of the created `google_storage_bucket_iam_binding` resources, keyed by the index of the input variable `storage_bucket_iam_bindings`.
+      - name: service_account_iam_members
+        description: A map of the created `google_service_account_iam_member` resources, keyed by the index of the input variable `service_account_iam_members`.
+      - name: service_account_iam_bindings
+        description: A map of the created `google_service_account_iam_binding` resources, keyed by the index of the input variable `service_account_iam_bindings`.
+  requirements:
+    roles:
+      - level: Project
+        roles:
+          - roles/resourcemanager.projectIamAdmin
+      - level: Project
+        roles:
+          - roles/storage.admin
+      - level: Project
+        roles:
+          - roles/iam.serviceAccountAdmin
+    permissions:
+      - resourcemanager.projects.setIamPolicy
+      - storage.buckets.setIamPolicy
+      - iam.serviceAccounts.setIamPolicy
+    services:
+      - cloudresourcemanager.googleapis.com
+      - storage.googleapis.com
+      - iam.googleapis.com
