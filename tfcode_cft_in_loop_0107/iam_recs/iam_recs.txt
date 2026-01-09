@@ -1,0 +1,15 @@
+ERR: terraform plan failed: exit status 1
+stderr:
+
+Error: Resource precondition failed
+
+  on main.tf line 197, in resource "null_resource" "precondition_check":
+ 197:       condition     = length(local.active_scopes) <= 1 && (length(var.bindings) == 0 || length(local.active_scopes) == 1)
+    ├────────────────
+    │ local.active_scopes is object with 2 attributes
+    │ var.bindings is empty map of object
+
+Invalid resource scope configuration. At most one scope (e.g., project_id,
+folder_id) can be specified. If 'bindings' are provided, exactly one scope is
+required. Found 2 scopes with 0 binding role(s).
+
