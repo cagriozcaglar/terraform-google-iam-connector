@@ -1,0 +1,59 @@
+apiVersion: blueprints.cloud.google.com/v1alpha1
+kind: TerraformBlueprint
+metadata:
+  name: terraform-google-iam-manager
+  version: 1.0.0
+  title: IAM Manager
+  source:
+    type: git
+    git:
+      repo: https://github.com/GoogleCloudPlatform/terraform-google-iam-manager.git
+      dir: /
+  actuationTool:
+    type: Terraform
+    versions:
+    - ">= 1.3.0"
+  description:
+    tagline: Manage authoritative and non-authoritative IAM policies on projects, buckets, and service accounts.
+    detailed: This Terraform module simplifies the management of Google Cloud IAM policies. It provides a unified interface to configure both authoritative IAM bindings (which overwrite existing members for a role) and non-authoritative IAM members (which additively grant roles) for Projects, Cloud Storage Buckets, and Service Accounts.
+  labels:
+    gcp: ""
+    iam: ""
+    security: ""
+spec:
+  terraform:
+    variables:
+    - name: iam_bindings
+      description: "A list of authoritative IAM bindings to create. A binding is a list of members for a single role. Note that this is authoritative and will overwrite any existing members for the role on the given resource."
+      type: list(object({ resource_type = string, resource_id = string, role = string, members = list(string), condition = optional(object({ title = string, description = string, expression = string })) }))
+      required: false
+      default: []
+    - name: iam_members
+      description: "A list of non-authoritative IAM members to create. A member is a single member/role pairing. This is non-authoritative and will not affect other members for the role on the given resource."
+      type: list(object({ resource_type = string, resource_id = string, role = string, member = string, condition = optional(object({ title = string, description = string, expression = string })) }))
+      required: false
+      default: []
+    outputs:
+    - name: project_bindings
+      description: The authoritative project IAM binding resources created.
+    - name: bucket_bindings
+      description: The authoritative storage bucket IAM binding resources created.
+    - name: service_account_bindings
+      description: The authoritative service account IAM binding resources created.
+    - name: project_members
+      description: The non-authoritative project IAM member resources created.
+    - name: bucket_members
+      description: The non-authoritative storage bucket IAM member resources created.
+    - name: service_account_members
+      description: The non-authoritative service account IAM member resources created.
+  requirements:
+    roles:
+    - level: Project
+      roles:
+      - roles/resourcemanager.projectIamAdmin
+      - roles/storage.admin
+      - roles/iam.serviceAccountAdmin
+    services:
+    - cloudresourcemanager.googleapis.com
+    - storage.googleapis.com
+    - iam.googleapis.com
