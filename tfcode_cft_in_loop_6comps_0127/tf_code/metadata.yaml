@@ -1,0 +1,134 @@
+# API and kind for the blueprint metadata
+apiVersion: blueprints.cloud.google.com/v1alpha1
+kind: BlueprintMetadata
+# Basic metadata about the blueprint
+metadata:
+  name: terraform-google-iam-grants
+  annotations:
+    config.kubernetes.io/local-config: "true"
+spec:
+  # General information about the blueprint
+  info:
+    name: terraform-google-iam-grants
+    title: "IAM Grants Module"
+    source:
+      type: git
+      git:
+        repo: https://github.com/GoogleCloudPlatform/terraform-google-iam-grants.git
+        ref: main
+    version: 1.0.0
+    actuationTool:
+      type: Terraform
+      versions: [ ">= 1.5" ]
+    descriptions:
+      tagline: A flexible Terraform module for managing IAM bindings and members across various GCP resources.
+      detailed: |
+        This module simplifies the application of IAM policies by allowing you to define both authoritative bindings (`google_*_iam_binding`) and non-authoritative member grants (`google_*_iam_member`) for projects, folders, organizations, and GCS buckets from a single, centralized configuration. It includes validation to prevent common misconfigurations, such as conflicts between authoritative and non-authoritative grants for the same resource and role.
+    examples:
+      - name: simple_project_iam
+        location: examples/simple_project_iam
+        title: Simple Project IAM
+        description: A basic example of applying IAM roles to a GCP project.
+      - name: multi_resource_iam
+        location: examples/multi_resource_iam
+        title: Multi-Resource IAM
+        description: An example demonstrating how to apply IAM grants to projects, folders, and GCS buckets simultaneously.
+
+  # Metadata for customizing the blueprint
+  deployment:
+    variables:
+      - name: bindings
+        description: |
+          A map of IAM bindings to create. The key of the map is a logical name for the binding, and the value is the binding configuration.
+          An IAM binding is authoritative for a single role. It replaces any existing IAM policy binding for that role.
+          Note: `google_*_iam_binding` is authoritative for a single role. It will overwrite any existing members for that role. Be cautious when using this resource, especially on roles managed by Google, as it can remove default service accounts or other essential grants.
+
+          Each binding object has the following attributes:
+          - `role`: (Required|string) The role that should be applied. e.g., 'roles/storage.objectViewer'.
+          - `members`: (Required|list(string)) A list of identities that will be granted the privilege of the role. e.g., ['user:jane@example.com', 'group:admins@example.com'].
+          - `project_id`: (Optional|string) The ID of the project to apply the binding to. One of `project_id`, `folder_id`, `org_id`, or `bucket` must be specified.
+          - `folder_id`: (Optional|string) The ID of the folder to apply the binding to. Can be prefixed with `folders/` or not. e.g., 'folders/123456789012' or '123456789012'.
+          - `org_id`: (Optional|string) The ID of the organization to apply the binding to. Can be prefixed with `organizations/` or not. e.g., '123456789012' or 'organizations/123456789012'.
+          - `bucket`: (Optional|string) The name of the GCS bucket to apply the binding to. e.g., 'my-bucket'.
+          - `condition`: (Optional|object) An IAM condition block.
+            - `title`: (Required|string) The title of the condition.
+            - `description`: (Optional|string) An optional description of the condition.
+            - `expression`: (Required|string) The CEL expression of the condition.
+        type: map(object({ role = string, members = list(string), project_id = optional(string), folder_id = optional(string), org_id = optional(string), bucket = optional(string), condition = optional(object({ title = string, description = optional(string), expression = string })) }))
+        required: false
+        default: {}
+      - name: members
+        description: |
+          A map of IAM members to create. The key of the map is a logical name for the member grant, and the value is the member configuration.
+          An IAM member is non-authoritative. It adds a single member to a role, leaving other members untouched.
+
+          Each member object has the following attributes:
+          - `role`: (Required|string) The role that should be applied. e.g., 'roles/compute.viewer'.
+          - `member`: (Required|string) The identity that will be granted the privilege of the role. e.g., 'user:jane@example.com'.
+          - `project_id`: (Optional|string) The ID of the project to apply the grant to. One of `project_id`, `folder_id`, `org_id`, or `bucket` must be specified.
+          - `folder_id`: (Optional|string) The ID of the folder to apply the grant to. Can be prefixed with `folders/` or not. e.g., 'folders/123456789012' or '123456789012'.
+          - `org_id`: (Optional|string) The ID of the organization to apply the grant to. Can be prefixed with `organizations/` or not. e.g., '123456789012' or 'organizations/123456789012'.
+          - `bucket`: (Optional|string) The name of the GCS bucket to apply the grant to. e.g., 'my-bucket'.
+          - `condition`: (Optional|object) An IAM condition block.
+            - `title`: (Required|string) The title of the condition.
+            - `description`: (Optional|string) An optional description of the condition.
+            - `expression`: (Required|string) The CEL expression of the condition.
+        type: map(object({ role = string, member = string, project_id = optional(string), folder_id = optional(string), org_id = optional(string), bucket = optional(string), condition = optional(object({ title = string, description = optional(string), expression = string })) }))
+        required: false
+        default: {}
+      - name: forbid_primitive_roles
+        description: "If true, prevents the use of primitive roles (owner, editor, viewer)."
+        type: bool
+        required: false
+        default: true
+
+    variableGroups:
+      - name: IAM Grants
+        description: "Configure authoritative bindings and non-authoritative member grants."
+        variables:
+          - bindings
+          - members
+      - name: Security Policies
+        description: "Configure security-related policies for IAM grants."
+        variables:
+          - forbid_primitive_roles
+
+    outputs:
+      - name: bucket_bindings
+        description: "A map of the created google_storage_bucket_iam_binding resources, keyed by the logical names from the input variable."
+      - name: bucket_members
+        description: "A map of the created google_storage_bucket_iam_member resources, keyed by the logical names from the input variable."
+      - name: folder_bindings
+        description: "A map of the created google_folder_iam_binding resources, keyed by the logical names from the input variable."
+      - name: folder_members
+        description: "A map of the created google_folder_iam_member resources, keyed by the logical names from the input variable."
+      - name: organization_bindings
+        description: "A map of the created google_organization_iam_binding resources, keyed by the logical names from the input variable."
+      - name: organization_members
+        description: "A map of the created google_organization_iam_member resources, keyed by the logical names from the input variable."
+      - name: project_bindings
+        description: "A map of the created google_project_iam_binding resources, keyed by the logical names from the input variable."
+      - name: project_members
+        description: "A map of the created google_project_iam_member resources, keyed by the logical names from the input variable."
+
+  # Prerequisites for deploying the blueprint
+  requirements:
+    roles:
+      - level: Project
+        roles:
+          - roles/resourcemanager.projectIamAdmin
+          - roles/storage.admin # Required to manage IAM on GCS buckets within the project
+      - level: Folder
+        roles:
+          - roles/resourcemanager.folderIamAdmin
+      - level: Organization
+        roles:
+          - roles/resourcemanager.organizationAdmin
+    permissions:
+      - resourcemanager.projects.setIamPolicy
+      - resourcemanager.folders.setIamPolicy
+      - resourcemanager.organizations.setIamPolicy
+      - storage.buckets.setIamPolicy
+    services:
+      - cloudresourcemanager.googleapis.com
+      - storage.googleapis.com
