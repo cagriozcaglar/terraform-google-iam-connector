@@ -1,0 +1,78 @@
+apiVersion: blueprints.cloud.google.com/v1alpha1
+kind: TerraformBlueprint
+metadata:
+  name: terraform-google-project-iam
+  source:
+    type: GIT
+    git:
+      repo: https://github.com/GoogleCloudPlatform/terraform-google-project-iam.git
+      dir: /
+  version: 1.0.0
+spec:
+  info:
+    title: Google Cloud Project IAM
+    actuationTool:
+      type: TERRAFORM
+      version: ">= 1.3"
+      flavor: HCL
+    description:
+      tagline: A Terraform module for managing IAM policies on a Google Cloud project.
+      detailed: This module provides a comprehensive way to manage IAM on a Google Cloud project. It supports authoritative bindings (overwriting existing roles), additive bindings (safely adding members), and conditional bindings (granting roles based on CEL expressions). It also allows for the configuration of project-level IAM audit logs.
+    documentation:
+    - title: README
+      url: README.md
+  requirements:
+    roles:
+    - level: project
+      roles:
+      - roles/resourcemanager.projectIamAdmin
+    services:
+    - cloudresourcemanager.googleapis.com
+  customization:
+    variables:
+    - name: project_id
+      description: The ID of the project to which IAM policies will be applied. If not provided, no resources will be created.
+      type: string
+      required: false
+      default: null
+    - name: bindings
+      description: A map of authoritative IAM bindings. The keys are IAM roles, and the values are lists of members. This will overwrite any existing members for the given roles.
+      type: object
+      required: false
+      default: {}
+    - name: additive_bindings
+      description: A map of non-authoritative IAM members. The keys are IAM roles, and the values are lists of members. This will add members to roles without affecting existing members.
+      type: object
+      required: false
+      default: {}
+    - name: conditional_bindings
+      description: A list of authoritative conditional IAM bindings. Each object represents a binding with a condition.
+      type: array
+      required: false
+      default: []
+    - name: audit_configs
+      description: A list of IAM audit configurations for the project. Each object specifies a service and its audit log configurations.
+      type: array
+      required: false
+      default: []
+    variableGroups:
+    - name: Project Settings
+      description: Configuration for the target Google Cloud project.
+      variables:
+      - project_id
+    - name: IAM Policy Configuration
+      description: Define the IAM bindings and audit configurations for the project.
+      variables:
+      - bindings
+      - additive_bindings
+      - conditional_bindings
+      - audit_configs
+    outputs:
+    - name: project_id
+      description: The ID of the project where the IAM policies were applied.
+    - name: authoritative_bindings_roles
+      description: A list of roles managed with authoritative bindings.
+    - name: additive_members
+      description: A map of non-authoritative IAM members created, keyed by role and member.
+    - name: conditional_bindings_roles
+      description: A set of roles managed with conditional bindings.
