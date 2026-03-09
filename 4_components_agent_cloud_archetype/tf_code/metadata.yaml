@@ -1,0 +1,95 @@
+# KRM-style metadata for a Terraform blueprint.
+# For more information, see https://docs.google.com/document/d/1uMhNixV5RsH3s21pniLZpQDkSLS2cABh2lo1fkq2hMY/edit
+apiVersion: blueprints.cloud.google.com/v1alpha1
+kind: TerraformBlueprint
+metadata:
+  # The machine-readable name of the blueprint.
+  name: terraform-google-iam-multi-resource
+  # The source of the blueprint.
+  source:
+    type: git
+    git:
+      repo: https://github.com/GoogleCloudPlatform/terraform-google-iam-multi-resource.git
+      dir: /
+spec:
+  # Basic information about the blueprint.
+  info:
+    # A human-readable title.
+    title: IAM Multi-Resource Module
+    # The current release version.
+    version: 1.0.0
+    # The actuation tool and its required versions.
+    actuationTool:
+      type: Terraform
+      version: ">= 1.3"
+    # Descriptions for the blueprint.
+    description:
+      tagline: A generic module for managing IAM on multiple GCP resource types.
+      detailed: |
+        This module provides a generic way to manage IAM bindings for multiple Google Cloud resource types.
+        It supports both additive bindings, which preserve existing IAM policies, and authoritative policies,
+        which replace all existing bindings for a given role. This is useful for centrally managing
+        IAM permissions across different resources like projects, storage buckets, and Pub/Sub topics
+        based on a common map of roles and members.
+
+        The module intelligently dispatches to the correct Terraform IAM resource based on the format
+        of the resource ID provided.
+    # Labels for organizing and filtering blueprints.
+    labels:
+      iam: ""
+      gcp: ""
+      security: ""
+
+  # Metadata for enabling rich customization through GUIs or CLIs.
+  deployment:
+    # Input variables for the blueprint.
+    variables:
+      - name: resources
+        description: A list of resource IDs to apply IAM bindings to. The module determines the resource type from the ID format.
+        type: List<String>
+        required: true
+      - name: bindings
+        description: A map of IAM roles to a list of members. The members are defined in the format accepted by the IAM binding resources (e.g., `user:test@example.com`, `serviceAccount:my-sa@...`).
+        type: Map<List<String>>
+        required: true
+      - name: mode
+        description: The mode of operation. `additive` adds IAM bindings without removing existing ones. `authoritative` replaces all existing bindings with the ones provided.
+        type: String
+        required: false
+        default: "additive"
+
+    # Groups of related variables for better presentation in UIs.
+    variableGroups:
+      - name: "IAM Configuration"
+        description: "Configure the resources and IAM bindings to be applied."
+        variables:
+          - resources
+          - bindings
+          - mode
+
+    # Outputs of the blueprint.
+    outputs:
+      - name: iam_results
+        description: A map of the full resource IDs of the IAM bindings or policies that were created, keyed by a unique identifier combining the resource and role.
+
+  # Prerequisites for deploying the blueprint.
+  requirements:
+    # GCP APIs that must be enabled to deploy the blueprint.
+    services:
+      - cloudresourcemanager.googleapis.com
+      - storage.googleapis.com
+      - pubsub.googleapis.com
+    # IAM roles required on the target resource for the identity deploying the blueprint.
+    # The specific role depends on the resource type being managed.
+    roles:
+      - role: roles/resourcemanager.projectIamAdmin
+        description: "Required to manage IAM policies on projects."
+      - role: roles/storage.admin
+        description: "Required to manage IAM policies on storage buckets."
+      - role: roles/pubsub.admin
+        description: "Required to manage IAM policies on Pub/Sub topics."
+    # Specific IAM permissions required for the identity deploying the blueprint.
+    permissions:
+      - resourcemanager.projects.setIamPolicy
+      - storage.buckets.setIamPolicy
+      - pubsub.topics.setIamPolicy
